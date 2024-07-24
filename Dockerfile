@@ -1,24 +1,28 @@
-ARG REGISTRY_URL=docker.io/library
-ARG UBUNTU_VERSION=jammy-20231004
+ARG UBUNTU_IMAGE=docker.io/library/ubuntu:jammy-20240627.1
 
-FROM $REGISTRY_URL/ubuntu:$UBUNTU_VERSION AS ca-certificates
+###############################################################################
+#                          debs-for-ca-certificates                           #
+###############################################################################
 
-WORKDIR /var/cache/apt/archives/
+FROM $UBUNTU_IMAGE AS debs-for-ca-certificates
 
-RUN --mount=type=bind,target=/etc/ssl/certs/ca-certificates.crt,source=ca-certificates.crt \
-    --mount=type=bind,target=/etc/apt/sources.list,source=sources.list \
+RUN --mount=type=secret,id=apt_sources,target=/etc/apt/sources.list,required=true,mode=0444 \
+    --mount=type=secret,id=ca_certificates,target=/etc/ssl/certs/ca-certificates.crt,required=true,mode=0444 \
     apt-get update && \
-    apt-get install --download-only -y \
+    apt-get install -d \
         ca-certificates \
         openssl \
     && rm -rf /var/lib/apt/lists/*
 
-FROM $REGISTRY_URL/ubuntu:$UBUNTU_VERSION
+###############################################################################
+#                               ca-certificates                               #
+###############################################################################
 
-ARG DEBIAN_FRONTEND=noninteractive
+FROM $UBUNTU_IMAGE AS ca-certificates
 
-RUN --mount=type=bind,target=/var/cache/apt/archives/,source=/var/cache/apt/archives/,from=ca-certificates \
+RUN --mount=type=bind,target=/var/cache/apt/archives/,source=/var/cache/apt/archives/,from=debs-for-ca-certificates \
     find /var/cache/apt/archives/ \
-        -name "ca-certificates*.deb" -o \
+        -name "ca-certificates*.deb" \
+        -o \
         -name "openssl*.deb" \
-    | xargs dpkg -i
+    | DEBIAN_FRONTEND=noninteractive xargs dpkg -i
