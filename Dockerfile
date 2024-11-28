@@ -12,7 +12,8 @@ RUN --mount=type=secret,id=apt_sources,target=/etc/apt/sources.list,required=tru
     apt-get install -d \
         ca-certificates \
         openssl \
-    && rm -rf /var/lib/apt/lists/*
+    && \
+    rm -rf /var/lib/apt/lists/*
 
 ###############################################################################
 #                               ca-certificates                               #
@@ -25,4 +26,5 @@ RUN --mount=type=bind,target=/var/cache/apt/archives/,source=/var/cache/apt/arch
         -name "ca-certificates*.deb" \
         -o \
         -name "openssl*.deb" \
-    | DEBIAN_FRONTEND=noninteractive xargs dpkg -i
+    | \
+    DEBIAN_FRONTEND=noninteractive xargs dpkg -i
